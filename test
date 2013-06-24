@@ -1,0 +1,175 @@
+//* SECUENCIA DE MOVIMIENTO DEL COCODRILO ROBOT *
+//* *
+//********************************************************************************
+//LIBRERIAS
+#include <Servo.h>
+#include <Ultrasonic.h>
+//DEFINICIONES
+//Se crean las variables de control para el servo
+gitServo Mandibula;
+Servo Cabeza;
+Servo Cola;
+int Mandibula_pos = 0;
+int Cabeza_pos = 0;
+int Cola_pos = 0;
+int delta_p_ca = 5; //del movimiento cabeza
+int delta_p_co = 10; //delta movimiento cola
+//Se crean otras variables
+int contador1 = 0;
+int IRsensorPin = 8;
+int contador2 = 0;
+int IR_dist_max = 0;
+int IRvar = 0;
+int time = 0;
+//Se definen las variables usadas para el sensor ultrasonico
+Ultrasonic ultrasonico(6,7); // (PIN Envio, PIN Recibe)
+int cm = ultrasonico.Ranging(CM);
+//Se define en que pin estaran conectados los componentes
+void setup()
+{
+Mandibula.attach(0);
+Cabeza.attach(1);
+Cola.attach(3);
+//El motor de las patas es un servo trucado, debe ser controlado con puente H mediante dos pines
+pinMode(4, OUTPUT);
+pinMode(5, OUTPUT);
+//Fin definicion de control de patas
+}
+void loop()
+{
+//1.- Resetear el estado de los motores en cero
+DetenerServos(); //SubRutina detiene servos
+//2.- Modo previo/movimiento
+//-->Pasar la mano por sensor ultrasonico para iniciar el movimiento
+while (cm > 10) //permaece estatico hasta que la distancia medida es menor a 10cm
+{
+DetenerServos();
+}
+//2.2- Retroceder, avanzar y retroceder en lapsos de tiempos definidos
+do
+{
+Cabeza.write(105);
+Cola.write(150);
+Mandibula.write(10);
+AvanzaPatas();
+delay(1000);
+Cabeza.write(75);
+Cola.write(30);
+Mandibula.write(30);
+AvanzaPatas();
+contador1=contador1+1;
+} while (contador1 < 5);
+contador1 = 0;
+//2.3- Detenerse
+DetenerServos();
+//INICIA BUCLE CONDICIONAL
+//********************************************************************************
+// Termina cuando el sensor infrarojo detecta objeto dentro de la mandibula
+//********************************************************************************
+//3.- Iniciar el modo de Caza
+//--> Inicia de forma automatica luego del lapso determinado
+//3.1- Abrir la boca
+//3.2- Mover la cabeza
+//3.3- Mover la cola
+//TERMINAL EL BUCLE AL CUMPLIR LA CONDICION
+while(IR_dist_max< IRvar)
+{
+Mandibula.write(50);
+FuncCaza();
+}
+//4.- Preparacion para modo de escape
+//--> Se ejecuta cuando termina el bucle previo
+//4.1 Cierra la boca
+//4.2 Coloca en cero el angulo de la cola
+DetenerServos();
+//INICIA BUCLE CON DOBLEMENTE CONDICIONAL
+//*******************************************************************************************
+// Termina cuando un objeto es medido en cercania de impacto por el sensor ultrasonico
+// Termina luego de un lapso de tiempo definido
+//*******************************************************************************************
+//5.- Iniciar modo de escape
+//--> Inicia luego de la redefinicion de las variables
+//5.1- Avanza
+//5.3- Mueve la cola
+time=millis()+4000;
+while(time>millis())
+{
+FuncEsc();
+}
+//TERMINAL EL BUCLE AL CUMPLIR LA CONDICION
+}
+//********************************************************************************************
+//FINALIZA EL PROGRAMA TRONCAL
+//SECCION DE FUNCIONES USADAS EN EL PROGRAMA TRONCAL
+//FUNCION PARA REINICIAR LAS PARIABLES DE POSICION Y REESTABLECER LOS MOTORES
+int DetenerServos()
+{
+Cabeza_pos = 0;
+Cola_pos = 0;
+Cabeza.write(90);
+Cola.write(90);
+Mandibula.write(0),
+DetenerPatas();
+}
+//FUNCION QUE DETIENE EL MOVMIENTO DE LAS PATAS
+int DetenerPatas()
+{
+digitalWrite(4, HIGH);
+digitalWrite(5, HIGH);
+}
+//FUNCION QUE INICIA EL MOVIMIENTO DE LAS PATAS EN UNA DIRECCION
+int AvanzaPatas()
+{
+digitalWrite(4, LOW);
+digitalWrite(5, HIGH);
+}
+//FUNCION QUE INICIA EL MOVMIENTO DE LAS PATAS EN DIRECCION CONTRARIA
+int RetorcedePatas()
+{
+digitalWrite(4, HIGH);
+digitalWrite(5, LOW);
+}
+//FUNCION QUE AGRUPA VARIOS PASOS PARA SIMULAR EL MOVIMIENTO CICLICO DE LA CABEZA Y LA COLA DURANTE EL MODO DE CAZA
+int FuncCaza()
+{
+DetenerServos();
+contador2=0;
+while(contador2 < 7)
+{
+Cabeza_pos = Cabeza_pos + delta_p_ca;
+Cola_pos = Cola_pos + delta_p_co;
+Cabeza.write(Cabeza_pos);
+Cola.write(Cola_pos);
+contador2=contador2+1;
+}
+DetenerServos();
+contador2=0;
+while(contador2 < 7)
+{
+Cabeza_pos = Cabeza_pos - delta_p_ca;
+Cola_pos = Cola_pos - delta_p_co;
+Cabeza.write(Cabeza_pos);
+Cola.write(Cola_pos);
+contador2=contador2+1;
+}
+}
+//FUNCION QUE SIMULA EL MOVIMIENTO DE LA COLA CICLICO DURANTE EL ESCAPE
+int FuncEsc()
+{
+AvanzaPatas();
+while(contador2 < 7)
+{
+Cola_pos = Cola_pos - delta_p_co;
+Cola.write(Cola_pos);
+contador2=contador2+1;
+}
+RetorcedePatas();
+while(contador2 < 7)
+{
+Cola_pos = Cola_pos - delta_p_co;
+Cola.write(Cola_pos);
+contador2=contador2+1;
+}
+}
+}
+}
